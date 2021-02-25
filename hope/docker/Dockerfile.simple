@@ -1,0 +1,27 @@
+# Build jar
+FROM maven:3.3-jdk-8 as packages
+COPY hope/ /usr/src/mymaven
+
+RUN cd /usr/src/mymaven && \
+	mvn package -DskipTests
+
+FROM dataturks/dataturks:3.3.0
+
+ARG BASE_DIR=/home/dataturks
+ARG LOCAL_DOCKER_DIR=./hope/docker
+
+COPY --from=packages \
+    /usr/src/mymaven/target/dataturks-1.0-SNAPSHOT.jar \
+    $BASE_DIR/dataturks-1.0-SNAPSHOT.jar
+
+RUN apt-get update && \
+    apt-get install -y gettext && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY $LOCAL_DOCKER_DIR/startup.sh $BASE_DIR/startup.sh
+COPY $LOCAL_DOCKER_DIR/db_postgresql_init.sql $BASE_DIR/
+
+RUN chmod +x ./startup.sh
+
+ENTRYPOINT "/home/dataturks/startup.sh"
